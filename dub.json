@@ -1,0 +1,13 @@
+{
+	"name": "htmldiff",
+	"description":"An HTML difftool.",
+	"copyright": "Copyright © 2015, Matt Kline, Fluke Networks",
+	"license": "zlib",
+	"authors": ["Matt Kline"],
+	"targetType": "executable",
+	"buildTypes": {
+		"debug": {
+			"buildOptions": ["debugMode", "debugInfo", "unittests"]
+		}
+	}
+}
