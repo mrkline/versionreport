@@ -46,7 +46,7 @@ int main(string[] args)
 }
 
 private string helpText = q"EOS
-Usage: htmldiff <commit(s)>
+Usage: versionreport <commit(s)>
 
 Options:
 

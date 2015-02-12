@@ -1,6 +1,6 @@
 {
-	"name": "htmldiff",
-	"description":"An HTML difftool.",
+	"name": "versionreport",
+	"description":"Generates HTML reports between Git tags/commits/whatever",
 	"copyright": "Copyright © 2015, Matt Kline, Fluke Networks",
 	"license": "zlib",
 	"authors": ["Matt Kline"],

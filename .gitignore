@@ -3,4 +3,4 @@ dub.selections.json
 
 *.swp
 *.o
-htmldiff
+versionreport
