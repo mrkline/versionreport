@@ -45,6 +45,19 @@ struct DirectoryEntry {
 		return current;
 	}
 
+	unittest
+	{
+		DirectoryEntry root;
+		auto result = root.traverseTo("foo/bar/baz");
+		auto foo = "foo" in root.children;
+		assert(foo);
+		auto bar = "bar" in foo.children;
+		assert(bar);
+		auto baz = "baz" in bar.children;
+		assert(baz);
+		assert(baz is result);
+	}
+
 	/// Finds a file at the given path,
 	/// or throws an exception if one does not exist.
 	/// Unlike traverseTo, this does not create anything.
@@ -70,14 +83,30 @@ struct DirectoryEntry {
 	unittest
 	{
 		DirectoryEntry root;
-		auto result = root.traverseTo("foo/bar/baz");
-		auto foo = "foo" in root.children;
-		assert(foo);
-		auto bar = "bar" in foo.children;
-		assert(bar);
-		auto baz = "baz" in bar.children;
-		assert(baz);
-		assert(baz is result);
+		root.traverseTo("foo/bar/baz").files["thefile"] = FileEntry.init;
+		assert(root.getFile("foo/bar/baz/thefile"));
+	}
+
+
+	void sumLinesChanged()
+	{
+		linesAdded = 0;
+		linesRemoved = 0;
+
+		foreach (ref child; children) {
+			child.sumLinesChanged();
+			linesAdded += child.linesAdded;
+			linesRemoved += child.linesRemoved;
+		}
+
+		// Find files with changes and get their lines added and removed
+		foreach (file; files) {
+			if (file.diff is null)
+				continue;
+
+			linesAdded += file.diff.linesAdded;
+			linesRemoved += file.diff.linesRemoved;
+		}
 	}
 }
 

@@ -34,13 +34,16 @@ int main(string[] args)
 	root.markTrackedFiles();
 
 	stderr.writeln("Getting changes from Git...");
-	auto diffStats = diffIndex(args);
+	DiffStat[] diffStats = diffIndex(args);
 
-	stderr.writeln("Marking files with their changes...");
+	// Apply those stats to their respective files in the tree
 	foreach (stat; diffStats) {
 		auto file = root.getFile(stat.path);
 		file.diff = &stat;
 	}
+
+	// Sum up everything
+	root.sumLinesChanged();
 
 	return 0;
 }
