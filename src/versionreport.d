@@ -7,6 +7,7 @@ import fsdata;
 import getoptutils;
 import git;
 import help;
+import html;
 
 int main(string[] args)
 {
@@ -37,13 +38,20 @@ int main(string[] args)
 	DiffStat[] diffStats = diffIndex(args);
 
 	// Apply those stats to their respective files in the tree
-	foreach (stat; diffStats) {
-		auto file = root.getFile(stat.path);
+	foreach (ref stat; diffStats) {
+		auto file = root.findOrInsertFile(stat.path);
+		// In almost all cases, this should already be set via markTrackedFiles above.
+		// However, in the case where a file was deleted in the Git log,
+		// the file will will have just been created by findOrInsert and will have default
+		// values, so indicate that it is tracked (since it was deleted in Git history).
+		file.tracked = true;
 		file.diff = &stat;
 	}
 
 	// Sum up everything
-	root.sumLinesChanged();
+	root.sumChurn();
+
+	root.buildSite("/tmp/html");
 
 	return 0;
 }

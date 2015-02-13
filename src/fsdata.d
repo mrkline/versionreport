@@ -1,3 +1,4 @@
+import std.algorithm;
 import std.exception;
 import std.file;
 import std.path;
@@ -13,8 +14,7 @@ struct DirectoryEntry {
 
 	// Info from files contained inside the directory.
 	// Will be populated as we go through the Git diff.
-	int linesAdded;
-	int linesRemoved;
+	int totalChurn;
 
 	/// Traverses to a given directory entry creating parent entries
 	/// as needed on the way, similar to "mkdir -p".
@@ -27,6 +27,9 @@ struct DirectoryEntry {
 	}
 	body
 	{
+		if(path == ".")
+			return &this;
+
 		// Walk down the through the children, creating new ones if needed
 		DirectoryEntry* current = &this;
 		foreach(dir; pathSplitter(path)) {
@@ -61,22 +64,24 @@ struct DirectoryEntry {
 	/// Finds a file at the given path,
 	/// or throws an exception if one does not exist.
 	/// Unlike traverseTo, this does not create anything.
-	FileEntry* getFile(S)(S path) if (isSomeString!S)
+	FileEntry* findOrInsertFile(S)(S path) if (isSomeString!S)
 	in
 	{
 		assert(!path.isAbsolute());
 	}
 	body
 	{
-		DirectoryEntry* current = &this;
-		foreach (dir; pathSplitter(dirName(path))) {
-			DirectoryEntry* next = dir in current.children;
-			enforce(next, "Could not find path " ~ dirName(path));
-			current = next;
+		DirectoryEntry* dir = traverseTo(dirName(path));
+
+		auto fileName = baseName(path);
+
+		FileEntry* ret = fileName in dir.files;
+		if (!ret) {
+			dir.files[fileName.idup] = FileEntry.init;
+			ret = fileName in dir.files;
 		}
 
-		FileEntry* ret = baseName(path) in current.files;
-		enforce(ret, "Could not find file " ~ baseName(path));
+		assert(ret);
 		return ret;
 	}
 
@@ -84,29 +89,25 @@ struct DirectoryEntry {
 	{
 		DirectoryEntry root;
 		root.traverseTo("foo/bar/baz").files["thefile"] = FileEntry.init;
-		assert(root.getFile("foo/bar/baz/thefile"));
+		assert(root.findOrInsertFile("foo/bar/baz/thefile"));
+		assert(root.findOrInsertFile("foo/doesn't exist yet"));
 	}
 
 
-	void sumLinesChanged()
+	void sumChurn()
 	{
-		linesAdded = 0;
-		linesRemoved = 0;
+		totalChurn = 0;
 
 		foreach (ref child; children) {
-			child.sumLinesChanged();
-			linesAdded += child.linesAdded;
-			linesRemoved += child.linesRemoved;
+			child.sumChurn();
+			totalChurn += child.totalChurn;
 		}
 
-		// Find files with changes and get their lines added and removed
-		foreach (file; files) {
-			if (file.diff is null)
-				continue;
-
-			linesAdded += file.diff.linesAdded;
-			linesRemoved += file.diff.linesRemoved;
-		}
+		// Sum the churn of the files that were changed.
+		totalChurn += files.values
+			.filter!(f => f.diff !is null)
+			.map!(f => f.diff.churn)
+			.sum;
 	}
 }
 
@@ -120,12 +121,6 @@ struct FileEntry {
 	 */
 	DiffStat* diff;
 	bool tracked;
-
-	invariant
-	{
-		// We cannot have some Git changes if the file is not tracked.
-		assert(diff is null || tracked);
-	}
 }
 
 /// Builds a tree of the repository directory
@@ -141,6 +136,7 @@ DirectoryEntry buildDirectoryTree()
 		// Normalize the path (usually just strip "./")
 		// This matches Git output we'll be augmenting the tree with shortly.
 		auto path = buildNormalizedPath(entry.name);
+
 		// Skip the Git metadata
 		if (pathSplitter(path).front == ".git")
 			continue;

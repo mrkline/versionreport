@@ -10,8 +10,7 @@ import fsdata;
 import processutils;
 
 struct DiffStat {
-	int linesAdded;
-	int linesRemoved;
+	int churn;
 	string path;
 	string patch;
 }
@@ -96,7 +95,7 @@ void markTrackedFiles(ref DirectoryEntry root)
 	scope(failure) { kill(pipes.pid); wait(pipes.pid); }
 
 	foreach(file; pipes.stdout.byLine)
-		root.getFile(file).tracked = true;
+		root.findOrInsertFile(file).tracked = true;
 }
 
 private:
@@ -107,9 +106,13 @@ pure DiffStat parseNumstatLine(const char[] line)
 	enforce(tokens.length == 3,
 	        "Unexpected format for numstat line from git diff-index\n"
 	        "(got " ~ line ~ ")");
+	// If it's not an integer, as is the case for binaries (a '-' is shown),
+	// 1 change.
+	int linesAdded = tokens[0].to!int.ifThrown(1);
+	int linesRemoved = tokens[1].to!int.ifThrown(1);
+
 	DiffStat newStat;
-	newStat.linesAdded = tokens[0].to!int;
-	newStat.linesRemoved = tokens[1].to!int;
+	newStat.churn = calculateChurn(linesAdded, linesRemoved);
 	newStat.path = tokens[2].idup;
 	return newStat;
 }
@@ -117,17 +120,24 @@ pure DiffStat parseNumstatLine(const char[] line)
 unittest
 {
 	DiffStat ds = parseNumstatLine("25 6 toFour");
-	assert(ds.linesAdded == 25);
-	assert(ds.linesRemoved == 6);
+	assert(ds.churn == calculateChurn(25, 6));
 	assert(ds.path == "toFour");
 
 	ds = parseNumstatLine("25\t6\ttoFour"); // Actual git output is tabs
-	assert(ds.linesAdded == 25);
-	assert(ds.linesRemoved == 6);
+	assert(ds.churn == calculateChurn(25, 6));
 	assert(ds.path == "toFour");
 
-	assertThrown(parseNumstatLine("25 NaN nope"));
 	assertThrown(parseNumstatLine("25 6 2 4 Chicago"));
+}
+
+pure int calculateChurn(int added, int removed)
+{
+	import std.math;
+
+	// We'll define churn as added + removed - abs(added - removed).
+	// This means that each replaced line will count as 1,
+	// and additional added and removed lines will be one each.
+	return added + removed - abs(added - removed);
 }
 
 /*
