@@ -38,9 +38,6 @@ void writeFilePageIfNeeded(const ref FileEntry fe, string filePath)
 	if (fe.diff is null)
 		return;
 
-	string[dchar] escapeTable =
-		['\'' : "&apos;", '"' : "&quot;", '&' : "&amp;", '<' : "&lt;", '>' : "&gt;"];
-
 	auto fout = File(filePath ~ ".html", "wb");
 
 	with (fout) {
@@ -53,7 +50,17 @@ void writeFilePageIfNeeded(const ref FileEntry fe, string filePath)
 		writeln("<body>");
 		writeln(`<a href="index.html">..</a>`);
 		writeln("<pre><code>");
-		writeln(translate(fe.diff.patch, escapeTable));
+		try {
+			string[dchar] escapeTable =
+				['\'' : "&apos;", '"' : "&quot;", '&' : "&amp;", '<' : "&lt;", '>' : "&gt;"];
+
+			writeln(translate(fe.diff.patch, escapeTable));
+		}
+		catch (core.exception.UnicodeException ex) {
+			stderr.writeln("Warning: Unable to write file ", filePath, ".html because its diff contained invalid UTF-8");
+			writeln("Diff could not be converted to HTML as it contained invalid UTF-8");
+			return;
+		}
 		writeln("</code></pre>");
 		writeln("</body>");
 		writeln("</html>");
