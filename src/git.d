@@ -48,15 +48,15 @@ string getRepoRoot()
 	return firstLineOf(["git", "rev-parse", "--show-toplevel"]);
 }
 
-/// Calls git diff-index with --numstat and --patch
+/// Calls git diff-tree with --numstat and --patch
 /// in order to get the number of lines changed per file as well as the patch.
 /// Returns an array of this information (see DiffStat)
 DiffStat[] diffIndex(string[] args)
 {
-	auto pipes = pipeProcess(["git", "diff-index", "--numstat", "--patch"] ~ args,
+	auto pipes = pipeProcess(["git", "diff-tree", "--numstat", "--patch"] ~ args,
 	                         Redirect.stdout);
 	// Make sure to wait for the process on the way out
-	scope(exit) enforce(wait(pipes.pid) == 0, "git diff-index failed");
+	scope(exit) enforce(wait(pipes.pid) == 0, "git diff-tree failed");
 	// If we're leaving early due to an exception,
 	// kill the process so it doesn't hang on a full pipe.
 	scope(failure) { kill(pipes.pid); wait(pipes.pid); }
@@ -77,7 +77,7 @@ DiffStat[] diffIndex(string[] args)
 	// Pop the diff line and we should be set to go with the patches
 	lines.popFront();
 	foreach (ref stat; ret) {
-		enforce(!lines.empty, "Unexpected end of git diff-index output");
+		enforce(!lines.empty, "Unexpected end of git diff-tree output");
 		stat.appendPatchToStat(lines);
 	}
 
@@ -104,7 +104,7 @@ pure DiffStat parseNumstatLine(const char[] line)
 {
 	auto tokens = splitter(line).array;
 	enforce(tokens.length == 3,
-	        "Unexpected format for numstat line from git diff-index\n"
+	        "Unexpected format for numstat line from git diff-tree\n"
 	        "(got " ~ line ~ ")");
 	// If it's not an integer, as is the case for binaries (a '-' is shown),
 	// 1 change.
