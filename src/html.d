@@ -1,34 +1,66 @@
 import std.stdio;
+import std.path;
 
 import fsdata;
 
-void buildSite(const ref DirectoryEntry entry, string rootSaveDirectory)
+/// Info about the root directory for HTML output
+/// and the root project directory, which may be useful as we traverse
+/// the project writing out all our HTML.
+struct RootInfo {
+	DirectoryEntry* rootEntry; ///< The root directory entry from the project
+	string outputDirectory; ///< The directory to output HTML
+}
+
+
+/// Recursively builds an HTML report based on a given DirectoryEntry
+/// and a path in which to place the report.
+void buildSite(const ref DirectoryEntry entry, string outputDirectory)
 {
-	buildSiteRecursor(entry, rootSaveDirectory, entry);
+	const RootInfo info = { &entry, outputDirectory };
+	buildSiteRecursor(entry, "", info);
 }
 
 private:
 
+/// Calculates and formats a string of the percentage of churn
+/// for a given file or directory
 string percentChurnString(int partial, int total)
 {
 	import std.string : format;
 
 	double percent = cast(double)partial / cast(double)total * 100;
+
+	// For now, cap displayed precision to whole percentages.
 	if (percent > 0.0 && percent < 1.0)
 		return "< 1%";
 	else
 		return format("%2.0f%%", percent);
 }
 
-void buildSiteRecursor(const ref DirectoryEntry entry, string directory, const ref DirectoryEntry re)
+/**
+ * Recursively build the site
+ * Params:
+ *   entry = The current directory entry (these are recursively examined)
+ *   relativePath = The path of said entry in the project
+ *   rootInfo = The info about the root entry and our output path
+ */
+void buildSiteRecursor(const ref DirectoryEntry entry, string relativePath, const ref RootInfo rootInfo)
 {
-	writeDirectoryPage(entry, directory, re);
+	import std.file : mkdirRecurse;
+
+	string entryDirectory = buildNormalizedPath(rootInfo.outputDirectory, relativePath);
+	mkdirRecurse(entryDirectory);
+
+	writeDirectoryPage(entry, relativePath, rootInfo);
 	foreach (name, file; entry.files) {
-		writeFilePageIfNeeded(file, directory ~ "/" ~ name);
+		string filePath = buildNormalizedPath(entryDirectory, name ~ ".html");
+		writeFilePageIfNeeded(file, filePath);
 	}
 
-	foreach (name, child; entry.children)
-		buildSiteRecursor(child, directory ~ "/" ~ name, re);
+	foreach (name, child; entry.children) {
+		string relativeChildPath = buildNormalizedPath(relativePath, name);
+		buildSiteRecursor(child, relativeChildPath, rootInfo);
+	}
 }
 
 void writeFilePageIfNeeded(const ref FileEntry fe, string filePath)
@@ -38,7 +70,7 @@ void writeFilePageIfNeeded(const ref FileEntry fe, string filePath)
 	if (fe.diff is null)
 		return;
 
-	auto fout = File(filePath ~ ".html", "wb");
+	auto fout = File(filePath, "wb");
 
 	with (fout) {
 		writeln("<!DOCTYPE html>");
@@ -67,12 +99,9 @@ void writeFilePageIfNeeded(const ref FileEntry fe, string filePath)
 	}
 }
 
-void writeDirectoryPage(const ref DirectoryEntry entry, string directoryPath, const ref DirectoryEntry re)
+void writeDirectoryPage(const ref DirectoryEntry entry, string relativePath, const ref RootInfo rootInfo)
 {
-	import std.file : mkdirRecurse;
-
-	mkdirRecurse(directoryPath);
-	auto writer = DirectoryPageWriter(&entry, directoryPath ~ "/index.html", &re);
+	auto writer = DirectoryPageWriter(entry, relativePath, rootInfo);
 	writer.write();
 }
 
@@ -82,20 +111,14 @@ struct DirectoryPageWriter {
 
 	@disable this();
 
-	this(const DirectoryEntry* dir, string filePath, const DirectoryEntry* re)
-	in
+	this(const ref DirectoryEntry dir, string relative, const ref RootInfo ri)
 	{
-		import std.range : empty;
-
-		assert(dir !is null);
-		assert(!filePath.empty);
-		assert(re !is null);
-	}
-	body
-	{
-		fout = File(filePath, "w");
-		entry = dir;
-		rootEntry = re;
+		assert(relative);
+		string pagePath = buildNormalizedPath(ri.outputDirectory, relative, "index.html");
+		fout = File(pagePath, "w");
+		entry = &dir;
+		relativePath = relative;
+		rootInfo = &ri;
 	}
 
 	void write()
@@ -105,12 +128,12 @@ struct DirectoryPageWriter {
 			writeln("<html>");
 			writeln("<head>");
 			writeln(`<meta charset="utf-8">`);
-			writeln("<title>Version report</title>");
+			writeln("<title>", relativePath, "</title>");
 			writeln("</head>");
 			writeln("<body>");
 			// If it's not the top directory
 			// add a ..
-			if (entry !is rootEntry)
+			if (entry !is rootInfo.rootEntry)
 				writeln(`<a href="../index.html">..</a>`);
 			writeEntryTable();
 			writeln("</body>");
@@ -140,7 +163,7 @@ struct DirectoryPageWriter {
 		with (fout) {
 			writeln("  <tr>");
 			writeln(`    <td><a href="`, childName, `/index.html">`, childName, "/</a></td>");
-			string pstring = percentChurnString(child.totalChurn, rootEntry.totalChurn);
+			string pstring = percentChurnString(child.totalChurn, rootInfo.rootEntry.totalChurn);
 			writeln("    <td>", pstring, "</td>");
 			writeln("  </tr>");
 		}
@@ -153,7 +176,7 @@ struct DirectoryPageWriter {
 			// We only write a page for a file if it has a diff
 			if (fe.diff !is null) {
 			writeln(`    <td><a href="`, fileName, `.html">`, fileName, "</a></td>");
-			string pstring = percentChurnString(fe.diff.churn, rootEntry.totalChurn);
+			string pstring = percentChurnString(fe.diff.churn, rootInfo.rootEntry.totalChurn);
 			writeln("    <td>", pstring, "</td>");
 			}
 			else {
@@ -166,5 +189,6 @@ struct DirectoryPageWriter {
 
 	File fout;
 	const DirectoryEntry* entry;
-	const DirectoryEntry* rootEntry;
+	string relativePath;
+	const RootInfo* rootInfo;
 }
