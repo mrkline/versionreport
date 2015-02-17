@@ -132,12 +132,12 @@ unittest
 
 pure int calculateChurn(int added, int removed)
 {
-	import std.math;
-
-	// We'll define churn as added + removed - abs(added - removed).
-	// This means that each replaced line will count as 1,
-	// and additional added and removed lines will be one each.
-	return added + removed - abs(added - removed);
+	// We were originally using the formula
+	// added + removed - abs(added - removed),
+	// which meant that each replaced line will count as 1,
+	// and additional added and removed lines would be one each.
+	// However, this comes out to zero if lines are only added or only removed.
+	return added + removed;
 }
 
 /*

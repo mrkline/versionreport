@@ -7,7 +7,7 @@ import fsdata;
 /// and the root project directory, which may be useful as we traverse
 /// the project writing out all our HTML.
 struct RootInfo {
-	DirectoryEntry* rootEntry; ///< The root directory entry from the project
+	const DirectoryEntry* rootEntry; ///< The root directory entry from the project
 	string outputDirectory; ///< The directory to output HTML
 }
 
