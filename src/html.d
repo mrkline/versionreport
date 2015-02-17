@@ -38,26 +38,6 @@ string percentChurnString(int partial, int total)
 		return format("%2.0f%%", percent);
 }
 
-string getStatusString(const ref DirectoryEntry entry)
-{
-	if (entry.totalChurn > 0)
-		return "Modified";
-	else if (entry.containsTrackedFiles)
-		return "Unmodified";
-	else
-		return "Untracked";
-}
-
-string getStatusString(const ref FileEntry entry)
-{
-	if (entry.diff !is null)
-		return "Modified";
-	else if (entry.tracked)
-		return "Unmodified";
-	else
-		return "Untracked";
-}
-
 /**
  * Recursively build the site
  * Params:
@@ -175,10 +155,10 @@ struct DirectoryPageWriter {
 	void writeEntryTable()
 	{
 		with (fout) {
-			writeln(`<table cellpadding="1">`);
+			writeln(`<table>`);
 			writeln("  <tr>");
 			writeln("    <th>Path</th>");
-			writeln("    <th>Status</th>");
+			writeln("    <th>Tracked</th>");
 			writeln("    <th>Total lines changed</th>");
 			writeln(`    <th colspan="2">Percent of total churn</th>`);
 			writeln("  </tr>");
@@ -200,7 +180,7 @@ struct DirectoryPageWriter {
 		with (fout) {
 			writeln("  <tr>");
 			writeln(`    <td><a href="`, childName, `/index.html">`, childName, "/</a></td>");
-			writeln("    <td>", child.getStatusString(), "</td>");
+			writeln("    <td>", child.containsTrackedFiles ? "✓" : " ", "</td>");
 			writeln("    <td>", child.totalChurn, "</td>");
 			writeln("    <td>", pstring, "</td>");
 			writeln(`    <td><progress value="`, childChurn, `" max="`, totalChurn, `"></progress>`);
@@ -219,14 +199,14 @@ struct DirectoryPageWriter {
 				immutable fileChurn = fe.diff.churn;
 				string pstring = percentChurnString(fileChurn, totalChurn);
 				writeln(`    <td><a href="`, fileName, `.html">`, fileName, "</a></td>");
-				writeln("    <td>", fe.getStatusString(), "</td>");
+				writeln("    <td>", fe.tracked ? "✓" : " ", "</td>");
 				writeln("    <td>", fe.diff.churn, "</td>");
 				writeln("    <td>", pstring, "</td>");
 				writeln(`    <td><progress value="`, fileChurn, `" max="`, totalChurn, `"></progress>`);
 			}
 			else {
 				writeln("    <td>", fileName, "</td>");
-				writeln("    <td>", fe.getStatusString(), "</td>");
+				writeln("    <td>", fe.tracked ? "✓" : " ", "</td>");
 				writeln("    <td>0</td>");
 				writeln("    <td>0%</td>");
 				writeln(`    <td><progress value="0" max="`, totalChurn, `"></progress>`);
