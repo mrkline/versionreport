@@ -1,5 +1,6 @@
 import std.algorithm;
 import std.file;
+import std.path;
 import std.stdio;
 import std.range;
 
@@ -13,9 +14,14 @@ int main(string[] args)
 {
 	import std.getopt;
 
+	string outputDir = buildNormalizedPath(tempDir(), "vr-out");
+
 	getoptPreservingEOO(args,
 		std.getopt.config.caseSensitive,
-		"help|h", { writeAndSucceed(helpText); });
+		"help|h", { writeAndSucceed(helpText); },
+		"output|o", &outputDir);
+
+	outputDir = outputDir.expandTilde();
 
 	// Shave off program name
 	args = args[1 .. $];
@@ -51,16 +57,32 @@ int main(string[] args)
 	// Sum up everything
 	root.propagateStats();
 
-	root.buildSite("/tmp/html");
+	root.buildSite(outputDir);
 
 	return 0;
 }
 
 private string helpText = q"EOS
-Usage: versionreport <commit(s)>
+Usage: versionreport [--output <output dir>] <commits>
+
+Generates a static HTML report of the differences between provided git commits.
+The commits are fed to git diff-tree, and its output is parsed to
+generate the report.
+The resulting site is written to the directory specified by --output,
+or a "vr-out" directory in your temporary directory by default.
+
+The output site is made of linked pages for each directory,
+showing the percentage of total change, or "churn", per directory.
+Drilling down to changed files will show their Git diff.
+Unlike git diff and git difftool, untracked and unchanged directories
+and files are also listed - this was the main impetus for this project.
 
 Options:
 
   --help, -h
     Display this help text.
+
+  --output, -o <output directory>
+    Write output to <output directory>.
+    The directory will be created if it does not exist.
 EOS";
