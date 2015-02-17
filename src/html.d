@@ -132,7 +132,10 @@ struct DirectoryPageWriter {
 			writeln("<title>", relativePath, "</title>");
 			writeln("</head>");
 			writeln("<body>");
-			writeln("<h1>Version Report</h1>");
+			write("<h1>Version report");
+			if (!relativePath.empty)
+				write(" for ", relativePath);
+			writeln("</h1>");
 			writeln("<hr/>");
 			// If it's not the top directory, build a linked path
 			if (entry !is rootInfo.rootEntry) {
