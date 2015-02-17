@@ -1,5 +1,6 @@
 import std.stdio;
 import std.path;
+import std.range;
 
 import fsdata;
 
@@ -35,6 +36,26 @@ string percentChurnString(int partial, int total)
 		return "< 1%";
 	else
 		return format("%2.0f%%", percent);
+}
+
+string getStatusString(const ref DirectoryEntry entry)
+{
+	if (entry.totalChurn > 0)
+		return "Modified";
+	else if (entry.containsTrackedFiles)
+		return "Unmodified";
+	else
+		return "Untracked";
+}
+
+string getStatusString(const ref FileEntry entry)
+{
+	if (entry.diff !is null)
+		return "Modified";
+	else if (entry.tracked)
+		return "Unmodified";
+	else
+		return "Untracked";
 }
 
 /**
@@ -89,7 +110,7 @@ void writeFilePageIfNeeded(const ref FileEntry fe, string filePath)
 			writeln(translate(fe.diff.patch, escapeTable));
 		}
 		catch (core.exception.UnicodeException ex) {
-			stderr.writeln("Warning: Unable to write file ", filePath, ".html because its diff contained invalid UTF-8");
+			stderr.writeln("Warning: Unable to write file ", filePath, " because its diff contained invalid UTF-8");
 			writeln("Diff could not be converted to HTML as it contained invalid UTF-8");
 			return;
 		}
@@ -131,10 +152,20 @@ struct DirectoryPageWriter {
 			writeln("<title>", relativePath, "</title>");
 			writeln("</head>");
 			writeln("<body>");
-			// If it's not the top directory
-			// add a ..
-			if (entry !is rootInfo.rootEntry)
-				writeln(`<a href="../index.html">..</a>`);
+			writeln("<h1>Version Report</h1>");
+			writeln("<hr/>");
+			// If it's not the top directory, build a linked path
+			if (entry !is rootInfo.rootEntry) {
+				auto dirs = pathSplitter(relativePath).array;
+				dirs = "project root" ~ dirs;
+				foreach (idx, dir; dirs[0 .. $-1]) {
+					// Build a path like "../../../" up to the given directory.
+					write(`<a href="`, repeat("..", dirs.length - idx - 1).join("/"),
+					                 `/index.html">`, dir, "</a>/");
+				}
+				// Cap it off with our current directory.
+				writeln(dirs[$-1]);
+			}
 			writeEntryTable();
 			writeln("</body>");
 			writeln("</html>");
@@ -147,7 +178,9 @@ struct DirectoryPageWriter {
 			writeln(`<table cellpadding="1">`);
 			writeln("  <tr>");
 			writeln("    <th>Path</th>");
-			writeln("    <th>Percent of total churn</th>");
+			writeln("    <th>Status</th>");
+			writeln("    <th>Total lines changed</th>");
+			writeln(`    <th colspan="2">Percent of total churn</th>`);
 			writeln("  </tr>");
 			foreach (name, child; entry.children)
 				writeChildDirectoryRow(name, child);
@@ -160,28 +193,43 @@ struct DirectoryPageWriter {
 
 	void writeChildDirectoryRow(string childName, const ref DirectoryEntry child)
 	{
+		immutable childChurn = child.totalChurn;
+		immutable totalChurn = rootInfo.rootEntry.totalChurn;
+		string pstring = percentChurnString(childChurn, totalChurn);
+
 		with (fout) {
 			writeln("  <tr>");
 			writeln(`    <td><a href="`, childName, `/index.html">`, childName, "/</a></td>");
-			string pstring = percentChurnString(child.totalChurn, rootInfo.rootEntry.totalChurn);
+			writeln("    <td>", child.getStatusString(), "</td>");
+			writeln("    <td>", child.totalChurn, "</td>");
 			writeln("    <td>", pstring, "</td>");
+			writeln(`    <td><progress value="`, childChurn, `" max="`, totalChurn, `"></progress>`);
 			writeln("  </tr>");
 		}
 	}
 
 	void writeFileRow(string fileName, const ref FileEntry fe)
 	{
+		immutable totalChurn = rootInfo.rootEntry.totalChurn;
+
 		with (fout) {
 			writeln("  <tr>");
 			// We only write a page for a file if it has a diff
 			if (fe.diff !is null) {
-			writeln(`    <td><a href="`, fileName, `.html">`, fileName, "</a></td>");
-			string pstring = percentChurnString(fe.diff.churn, rootInfo.rootEntry.totalChurn);
-			writeln("    <td>", pstring, "</td>");
+				immutable fileChurn = fe.diff.churn;
+				string pstring = percentChurnString(fileChurn, totalChurn);
+				writeln(`    <td><a href="`, fileName, `.html">`, fileName, "</a></td>");
+				writeln("    <td>", fe.getStatusString(), "</td>");
+				writeln("    <td>", fe.diff.churn, "</td>");
+				writeln("    <td>", pstring, "</td>");
+				writeln(`    <td><progress value="`, fileChurn, `" max="`, totalChurn, `"></progress>`);
 			}
 			else {
-			writeln("    <td>", fileName, "</td>");
-			writeln("    <td>0%</td>");
+				writeln("    <td>", fileName, "</td>");
+				writeln("    <td>", fe.getStatusString(), "</td>");
+				writeln("    <td>0</td>");
+				writeln("    <td>0%</td>");
+				writeln(`    <td><progress value="0" max="`, totalChurn, `"></progress>`);
 			}
 			writeln("  </tr>");
 		}

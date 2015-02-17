@@ -16,6 +16,8 @@ struct DirectoryEntry {
 	// Will be populated as we go through the Git diff.
 	int totalChurn;
 
+	bool containsTrackedFiles;
+
 	/// Traverses to a given directory entry creating parent entries
 	/// as needed on the way, similar to "mkdir -p".
 	/// Returns a pointer to the desired directory entry.
@@ -94,12 +96,13 @@ struct DirectoryEntry {
 	}
 
 
-	void sumChurn()
+	/// Recurisvely gets the total churn and sets the tracked flag
+	void propagateStats()
 	{
 		totalChurn = 0;
 
 		foreach (ref child; children) {
-			child.sumChurn();
+			child.propagateStats();
 			totalChurn += child.totalChurn;
 		}
 
@@ -108,6 +111,11 @@ struct DirectoryEntry {
 			.filter!(f => f.diff !is null)
 			.map!(f => f.diff.churn)
 			.sum;
+
+		// We contain tracked files if any child directory does
+		// or any file in our directory is tracked.
+		containsTrackedFiles = any!(c => c.containsTrackedFiles)(children.values) ||
+			any!(f => f.tracked)(files.values);
 	}
 }
 

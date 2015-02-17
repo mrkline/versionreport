@@ -49,7 +49,7 @@ int main(string[] args)
 	}
 
 	// Sum up everything
-	root.sumChurn();
+	root.propagateStats();
 
 	root.buildSite("/tmp/html");
 
