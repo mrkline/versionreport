@@ -4,6 +4,11 @@ import std.range;
 
 import fsdata;
 
+/*
+ * This file writes the HTML output.
+ * It's a tiny bit clunky at the moment but does its job.
+ */
+
 /// Info about the root directory for HTML output
 /// and the root project directory, which may be useful as we traverse
 /// the project writing out all our HTML.
@@ -45,26 +50,30 @@ string percentChurnString(int partial, int total)
  *   relativePath = The path of said entry in the project
  *   rootInfo = The info about the root entry and our output path
  */
-void buildSiteRecursor(const ref DirectoryEntry entry, string relativePath, const ref RootInfo rootInfo)
+void buildSiteRecursor(in ref DirectoryEntry entry, string relativePath, in ref RootInfo rootInfo)
 {
 	import std.file : mkdirRecurse;
 
 	string entryDirectory = buildNormalizedPath(rootInfo.outputDirectory, relativePath);
 	mkdirRecurse(entryDirectory);
 
+	// Write the page for this entry.
 	writeDirectoryPage(entry, relativePath, rootInfo);
+
+	// Write file pages for any files in this entry.
 	foreach (name, file; entry.files) {
 		string filePath = buildNormalizedPath(entryDirectory, name ~ ".html");
 		writeFilePageIfNeeded(file, filePath);
 	}
 
+	// Recurse down for child entries.
 	foreach (name, child; entry.children) {
 		string relativeChildPath = buildNormalizedPath(relativePath, name);
 		buildSiteRecursor(child, relativeChildPath, rootInfo);
 	}
 }
 
-void writeFilePageIfNeeded(const ref FileEntry fe, string filePath)
+void writeFilePageIfNeeded(in ref FileEntry fe, string filePath)
 {
 	import std.string: translate;
 
@@ -100,13 +109,13 @@ void writeFilePageIfNeeded(const ref FileEntry fe, string filePath)
 	}
 }
 
-void writeDirectoryPage(const ref DirectoryEntry entry, string relativePath, const ref RootInfo rootInfo)
+void writeDirectoryPage(in ref DirectoryEntry entry, string relativePath, in ref RootInfo rootInfo)
 {
 	auto writer = DirectoryPageWriter(entry, relativePath, rootInfo);
 	writer.write();
 }
 
-// Just used to hold some state (mostly the file handle and the total churn)
+// Helper class to hold some state (such as the file handle and the root info)
 // as we write out a directory page
 struct DirectoryPageWriter {
 
@@ -124,7 +133,7 @@ struct DirectoryPageWriter {
 
 	void write()
 	{
-		with (fout) {
+		with (fout) { // Use fout.writeln, not std.stdio.writeln
 			writeln("<!DOCTYPE html>");
 			writeln("<html>");
 			writeln("<head>");
@@ -133,6 +142,7 @@ struct DirectoryPageWriter {
 			writeln("</head>");
 			writeln("<body>");
 			write("<h1>Version report");
+			// If we're not in the root directory, put the path into the heading.
 			if (!relativePath.empty)
 				write(" for ", relativePath);
 			writeln("</h1>");
@@ -207,6 +217,7 @@ struct DirectoryPageWriter {
 				writeln("    <td>", pstring, "</td>");
 				writeln(`    <td><progress value="`, fileChurn, `" max="`, totalChurn, `"></progress>`);
 			}
+			// So, if it doesn't, zeroes across the board and no hyperlink.
 			else {
 				writeln("    <td>", fileName, "</td>");
 				writeln("    <td>", fe.tracked ? "✓" : " ", "</td>");

@@ -6,6 +6,7 @@ import std.traits;
 
 import git;
 
+/// Represents a directory in the analyzed project
 struct DirectoryEntry {
 	/// Any directories contained in the directory
 	DirectoryEntry[string] children;
@@ -15,13 +16,12 @@ struct DirectoryEntry {
 	// Info from files contained inside the directory.
 	// Will be populated as we go through the Git diff.
 	int totalChurn;
-
 	bool containsTrackedFiles;
 
 	/// Traverses to a given directory entry creating parent entries
 	/// as needed on the way, similar to "mkdir -p".
 	/// Returns a pointer to the desired directory entry.
-	DirectoryEntry* traverseTo(S)(S path) if (isSomeString!S)
+	DirectoryEntry* traverseTo(in char[] path)
 	in // preconditions
 	{
 		// The path to the subdirectory should obviously not be an absolute path
@@ -64,9 +64,8 @@ struct DirectoryEntry {
 	}
 
 	/// Finds a file at the given path,
-	/// or throws an exception if one does not exist.
-	/// Unlike traverseTo, this does not create anything.
-	FileEntry* findOrInsertFile(S)(S path) if (isSomeString!S)
+	/// or creates one if it does not exist.
+	FileEntry* findOrInsertFile(in char[] path)
 	in
 	{
 		assert(!path.isAbsolute());
@@ -78,6 +77,7 @@ struct DirectoryEntry {
 		auto fileName = baseName(path);
 
 		FileEntry* ret = fileName in dir.files;
+		// Create one if it does not exist
 		if (!ret) {
 			dir.files[fileName.idup] = FileEntry.init;
 			ret = fileName in dir.files;
@@ -97,6 +97,7 @@ struct DirectoryEntry {
 
 
 	/// Recurisvely gets the total churn and sets the tracked flag
+	/// for this and all child directories.
 	void propagateStats()
 	{
 		totalChurn = 0;
@@ -119,6 +120,7 @@ struct DirectoryEntry {
 	}
 }
 
+/// Represents a file in the analyzed project
 struct FileEntry {
 	/**
 	 * Git information if the file is tracked by Git,
@@ -148,6 +150,8 @@ DirectoryEntry buildDirectoryTree()
 		// Skip the Git metadata
 		if (pathSplitter(path).front == ".git")
 			continue;
+
+		// TODO: Possibly honor the .gitignore file?
 
 		if (entry.isDir) {
 			root.traverseTo(path);

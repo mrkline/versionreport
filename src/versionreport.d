@@ -14,20 +14,23 @@ int main(string[] args)
 {
 	import std.getopt;
 
+	// Default output directory
 	string outputDir = buildNormalizedPath(tempDir(), "vr-out");
 
+	// Get command line options
 	getoptPreservingEOO(args,
 		std.getopt.config.caseSensitive,
 		"help|h", { writeAndSucceed(helpText); },
 		"output|o", &outputDir);
 
+	// Expand home directory tildes as needed
 	outputDir = outputDir.expandTilde();
 
 	// Shave off program name
 	args = args[1 .. $];
 
 	// If there are no args remaining, we're going to compare to HEAD
-	// (same behavior as git diff)
+	// (similar to git show)
 	if (args.empty)
 		args ~= "HEAD";
 
@@ -54,9 +57,10 @@ int main(string[] args)
 		file.diff = &stat;
 	}
 
-	// Sum up everything
+	// Recursively sum the lines of change in directories and propagate other stats up.
 	root.propagateStats();
 
+	// Build the output.
 	root.buildSite(outputDir);
 
 	return 0;
