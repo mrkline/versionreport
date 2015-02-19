@@ -5,7 +5,6 @@ import std.stdio;
 import std.range;
 
 import fsdata;
-import getoptutils;
 import git;
 import help;
 import html;
@@ -18,10 +17,15 @@ int main(string[] args)
 	string outputDir = buildNormalizedPath(tempDir(), "vr-out");
 
 	// Get command line options
-	getoptPreservingEOO(args,
-		std.getopt.config.caseSensitive,
-		"help|h", { writeAndSucceed(helpText); },
-		"output|o", &outputDir);
+	try {
+		getopt(args,
+			std.getopt.config.caseSensitive,
+			"help|h", { writeAndSucceed(helpText); },
+			"output|o", &outputDir);
+	}
+	catch (GetOptException ex) {
+		writeAndFail(ex.msg, "\n\n", helpText);
+	}
 
 	// Expand home directory tildes as needed
 	outputDir = outputDir.expandTilde();
@@ -29,13 +33,25 @@ int main(string[] args)
 	// Shave off program name
 	args = args[1 .. $];
 
-	// If there are no args remaining, we're going to compare to HEAD
-	// (similar to git show)
-	if (args.empty)
+	// There should be one or two arguments
+	if (args.length < 1 || args.length > 2)
+		writeAndFail(helpText);
+	else if (args.length == 1)
 		args ~= "HEAD";
+
+	assert(args.length == 2);
 
 	enforceGitSetup();
 	chdir(getRepoRoot());
+
+	foreach (arg; args) {
+		if (!commitExists(arg))
+			writeAndFail(arg, " is not a known Git commit.");
+	}
+
+	if (args[0] == args[1])
+		writeAndFail("Comparing the same version (", args[0], ") to itself is useless.");
+
 
 	stderr.writeln("Building directory tree...");
 	auto root = buildDirectoryTree();
@@ -61,13 +77,17 @@ int main(string[] args)
 	root.propagateStats();
 
 	// Build the output.
+	stderr.writeln("Writing report to ", absolutePath(outputDir));
 	root.buildSite(outputDir);
 
 	return 0;
 }
 
 private string helpText = q"EOS
-Usage: versionreport [--output <output dir>] <commits>
+Usage: versionreport [--output <output dir>] <commit 1> [<commit 2>]
+
+where <commit 1> and <commit 2> are the two versions you want to compare.
+If <commit 2> is not specified, <commit 1> is compared against HEAD (the current commit).
 
 Generates a static HTML report of the differences between provided git commits.
 The commits are fed to git diff-tree, and its output is parsed to

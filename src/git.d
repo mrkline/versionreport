@@ -48,6 +48,11 @@ string getRepoRoot()
 	return firstLineOf(["git", "rev-parse", "--show-toplevel"]);
 }
 
+bool commitExists(string commit)
+{
+	return execute(["git", "branch", "-a", "--contains", commit]).status == 0;
+}
+
 /// Calls git diff-tree with --numstat and --patch
 /// in order to get the number of lines changed per file as well as the patch.
 /// Returns an array of this information (see DiffStat)
