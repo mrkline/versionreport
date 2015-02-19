@@ -8,6 +8,9 @@
 	"buildTypes": {
 		"debug": {
 			"buildOptions": ["debugMode", "debugInfo", "unittests"]
+		},
+		"release": {
+			"buildOptions": ["releaseMode", "optimize"]
 		}
 	}
 }

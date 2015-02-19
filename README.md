@@ -53,6 +53,6 @@ versionreport is written in [D](http://dlang.org/), for the primary reasons:
   This whole project clocks in at a bit over 500 lines of code, including help text.
 
 Files for D's package manager, [DUB](http://code.dlang.org/), are provided, so if you have DUB installed
-you can just run `dub build`. Otherwise you can build versionreport using the D compiler with
+you can just run `dub build --build=release`. Otherwise you can build versionreport using the D compiler with
 
-    dmd -release -ofversionreport src/*.d
+    dmd -release -ofversionreport -O src/*.d
