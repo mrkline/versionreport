@@ -17,7 +17,7 @@ struct DiffStat {
 
 bool canFindGit()
 {
-	return execute(["git", "--version"]).status == 0;
+	return (execute(["git", "--version"]).status == 0).ifThrown(false);
 }
 
 void enforceGitFound()
