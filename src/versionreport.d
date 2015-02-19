@@ -21,6 +21,7 @@ int main(string[] args)
 		getopt(args,
 			std.getopt.config.caseSensitive,
 			"help|h", { writeAndSucceed(helpText); },
+			"version|v", { writeAndSucceed(versionText); },
 			"output|o", &outputDir);
 	}
 	catch (GetOptException ex) {
@@ -106,7 +107,14 @@ Options:
   --help, -h
     Display this help text.
 
+  --version, -v
+    Display version info.
+
   --output, -o <output directory>
     Write output to <output directory>.
     The directory will be created if it does not exist.
+EOS";
+
+private string versionText = q"EOS
+Version Report v0.1, by Matt Kline, Fluke Networks
 EOS";
