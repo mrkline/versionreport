@@ -48,7 +48,7 @@ Precompiled binaries for Linux and Windows are provided on the
 
 ## How do I build it?
 
-versionreport is written in [D](http://dlang.org/), for the primary reasons:
+versionreport is written in [D](http://dlang.org/) for the following main reasons:
 
 - D has a nice standard library that allows us to do everything this project requires
   (easily!) without any additional libraries.
