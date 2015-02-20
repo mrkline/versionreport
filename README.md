@@ -41,6 +41,11 @@ or get additional information with
 Once versionreport finishes, you can view the report by opening `index.html` in the output directory
 using your web browser.
 
+## How do I download it?
+
+Precompiled binaries for Linux and Windows are provided on the
+[releases page](https://github.com/mrkline/versionreport/releases).
+
 ## How do I build it?
 
 versionreport is written in [D](http://dlang.org/), for the primary reasons:
