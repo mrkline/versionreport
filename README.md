@@ -60,4 +60,10 @@ versionreport is written in [D](http://dlang.org/) for the following main reason
 Files for D's package manager, [DUB](http://code.dlang.org/), are provided, so if you have DUB installed
 you can just run `dub build --build=release`. Otherwise you can build versionreport using the D compiler with
 
-    dmd -release -ofversionreport -O src/*.d
+    dmd -release -O -ofversionreport src/*.d
+
+for an optimized, release build or
+
+    dmd -debug -g -ofversionreport src/*.d
+
+for a debug build.
