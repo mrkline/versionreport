@@ -173,7 +173,7 @@ struct DirectoryPageWriter {
 			writeln("    <th>Path</th>");
 			writeln("    <th>Tracked</th>");
 			writeln("    <th>Total lines changed</th>");
-			writeln(`    <th colspan="2">Percent of total churn</th>`);
+			writeln(`    <th colspan="2">Percent of churn in this directory</th>`);
 			writeln("  </tr>");
 			foreach (name, child; entry.children)
 				writeChildDirectoryRow(name, child);
@@ -187,8 +187,8 @@ struct DirectoryPageWriter {
 	void writeChildDirectoryRow(string childName, const ref DirectoryEntry child)
 	{
 		immutable childChurn = child.totalChurn;
-		immutable totalChurn = rootInfo.rootEntry.totalChurn;
-		string pstring = percentChurnString(childChurn, totalChurn);
+		immutable dirChurn = entry.totalChurn;
+		string pstring = percentChurnString(childChurn, dirChurn);
 
 		with (fout) {
 			writeln("  <tr>");
@@ -196,26 +196,26 @@ struct DirectoryPageWriter {
 			writeln("    <td>", child.containsTrackedFiles ? "✓" : " ", "</td>");
 			writeln("    <td>", child.totalChurn, "</td>");
 			writeln("    <td>", pstring, "</td>");
-			writeln(`    <td><progress value="`, childChurn, `" max="`, totalChurn, `"></progress>`);
+			writeln(`    <td><progress value="`, childChurn, `" max="`, dirChurn, `"></progress>`);
 			writeln("  </tr>");
 		}
 	}
 
 	void writeFileRow(string fileName, const ref FileEntry fe)
 	{
-		immutable totalChurn = rootInfo.rootEntry.totalChurn;
+		immutable dirChurn = entry.totalChurn;
 
 		with (fout) {
 			writeln("  <tr>");
 			// We only write a page for a file if it has a diff
 			if (fe.diff !is null) {
 				immutable fileChurn = fe.diff.churn;
-				string pstring = percentChurnString(fileChurn, totalChurn);
+				string pstring = percentChurnString(fileChurn, dirChurn);
 				writeln(`    <td><a href="`, fileName, `.html">`, fileName, "</a></td>");
 				writeln("    <td>", fe.tracked ? "✓" : " ", "</td>");
 				writeln("    <td>", fe.diff.churn, "</td>");
 				writeln("    <td>", pstring, "</td>");
-				writeln(`    <td><progress value="`, fileChurn, `" max="`, totalChurn, `"></progress>`);
+				writeln(`    <td><progress value="`, fileChurn, `" max="`, dirChurn, `"></progress>`);
 			}
 			// So, if it doesn't, zeroes across the board and no hyperlink.
 			else {
@@ -223,7 +223,7 @@ struct DirectoryPageWriter {
 				writeln("    <td>", fe.tracked ? "✓" : " ", "</td>");
 				writeln("    <td>0</td>");
 				writeln("    <td>0%</td>");
-				writeln(`    <td><progress value="0" max="`, totalChurn, `"></progress>`);
+				writeln(`    <td><progress value="0" max="`, dirChurn, `"></progress>`);
 			}
 			writeln("  </tr>");
 		}
