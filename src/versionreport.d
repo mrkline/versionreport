@@ -116,5 +116,5 @@ Options:
 EOS";
 
 private string versionText = q"EOS
-Version Report v0.1, by Matt Kline, Fluke Networks
+Version Report v0.2, by Matt Kline, Fluke Networks
 EOS";
