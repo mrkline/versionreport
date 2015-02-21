@@ -10,7 +10,7 @@ import fsdata;
 import processutils;
 
 struct DiffStat {
-	int churn;
+	int changeCount;
 	string path;
 	string patch;
 }
@@ -119,7 +119,7 @@ pure DiffStat parseNumstatLine(in char[] line)
 	int linesRemoved = tokens[1].to!int.ifThrown(1);
 
 	DiffStat newStat;
-	newStat.churn = calculateChurn(linesAdded, linesRemoved);
+	newStat.changeCount = calculateChange(linesAdded, linesRemoved);
 	newStat.path = tokens[2].idup;
 	return newStat;
 }
@@ -127,17 +127,17 @@ pure DiffStat parseNumstatLine(in char[] line)
 unittest
 {
 	DiffStat ds = parseNumstatLine("25 6 toFour");
-	assert(ds.churn == calculateChurn(25, 6));
+	assert(ds.changeCount == calculateChange(25, 6));
 	assert(ds.path == "toFour");
 
 	ds = parseNumstatLine("25\t6\ttoFour"); // Actual git output is tabs
-	assert(ds.churn == calculateChurn(25, 6));
+	assert(ds.changeCount == calculateChange(25, 6));
 	assert(ds.path == "toFour");
 
 	assertThrown(parseNumstatLine("25 6 2 4 Chicago"));
 }
 
-pure int calculateChurn(int added, int removed)
+pure int calculateChange(int added, int removed)
 {
 	// We were originally using the formula
 	// added + removed - abs(added - removed),

@@ -88,16 +88,16 @@ private string helpText = q"EOS
 Usage: versionreport [--output <output dir>] <commit 1> [<commit 2>]
 
 where <commit 1> and <commit 2> are the two versions you want to compare.
-If <commit 2> is not specified, <commit 1> is compared against HEAD (the current commit).
+If <commit 2> is not specified, <commit 1> is compared against HEAD
+(the current commit).
 
 Generates a static HTML report of the differences between provided git commits.
-The commits are fed to git diff-tree, and its output is parsed to
-generate the report.
-The resulting site is written to the directory specified by --output,
-or a "vr-out" directory in your temporary directory by default.
+The commits are fed to git diff-tree, and its output is parsed to generate
+the report.  The resulting site is written to the directory specified by
+--output, or a "vr-out" directory in your temporary directory by default.
 
 The output site is made of linked pages for each directory,
-showing the percentage of total change, or "churn", per directory.
+showing the amount of change made in each child file and directory.
 Drilling down to changed files will show their Git diff.
 Unlike git diff and git difftool, untracked and unchanged directories
 and files are also listed - this was the main impetus for this project.
